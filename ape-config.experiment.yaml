@@ -1,0 +1,22 @@
+name: curve-tricrypto-ng
+contracts_folder: contracts/main/
+
+plugins:
+  - name: vyper
+
+default_ecosystem: ethereum
+
+ethereum:
+  default_network: local
+  mainnet:
+    transaction_acceptance_timeout: 99999999
+    default_provider: geth
+
+geth:
+  ethereum:
+    mainnet:
+      uri: http://localhost:9090
+
+test:
+  mnemonic: test test test test test test test test test test test junk
+  number_of_accounts: 5
