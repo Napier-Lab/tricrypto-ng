@@ -31,7 +31,7 @@ class Action(Enum):
 
 
 ONE_YEAR = 60 * 60 * 24 * 365
-
+INITIAL_UNDERLYING_LIQUIDITY = 1000 * 10**18
 # https://curve.fi/#/ethereum/pools/factory-crypto-91/deposit
 INITIAL_PRICES = [10**18, 10**18, 10**18]  # 1:1:1
 PARAMS = {
@@ -47,8 +47,8 @@ PARAMS = {
     "initial_prices": INITIAL_PRICES[1:],
     # modified
     # TODO: check this
-    "A": 3 * 135 * 3**3 * 10000,  # MAX = 1000 * 3**3 * 10000
-    "gamma": int(1e-4 * 1e18),
+    "A": int(2.5 * 135 * 3**3 * 10000),  # MAX = 1000 * 3**3 * 10000
+    "gamma": int(80e-5 * 1e18),
     "mid_fee": int(4e-3 * 1e10),
     "out_fee": int(4e-2 * 1e10),
     "allowed_extra_profit": int(0.00000001 * 1e18),
@@ -135,14 +135,10 @@ def _setup_pool():
         with boa.env.prank(user):
             coin.approve(yield_metapool.address, 2**256 - 1)
 
-    INITIAL_LIQUIDITY = 1000 * 10**18
-    # Very first deposit
-    #     swap.add_liquidity(quantities, 0)
     # USD:3000, PT1:1000, PT2:1000, PT3:1000
-    yield_metapool._initializeLiquidity(INITIAL_LIQUIDITY, user)
-    assert yield_metapool.balanceOf(user) == INITIAL_LIQUIDITY
+    yield_metapool._initializeLiquidity(INITIAL_UNDERLYING_LIQUIDITY, user)
+    assert yield_metapool.balanceOf(user) == int(INITIAL_UNDERLYING_LIQUIDITY / 3)
     assert swap.balanceOf(yield_metapool.address) > 0
-    assert yield_metapool.balanceOf(user) == INITIAL_LIQUIDITY
 
     # we need to disable loss calculation since there is no fee involved
     # and swaps will not result in vprice going up. to do this, ramp
@@ -170,9 +166,10 @@ def _setup_pool():
 
 
 def test_main():
-    with open("scripts/scenarios/scenario1.json", "r") as file:
+    # load scenario
+    with open("scripts/napier-experiments/scenarios/scenario2.json", "r") as file:
         scenarios = json.load(file)
-
+    # set up pool
     swap, yield_metapool, usd, coins, views, swapper = _setup_pool()
     bals = _get_reserves(yield_metapool)
     print('Initial Balances:')
@@ -201,6 +198,7 @@ def test_main():
         "ir_pt2": [],
         "ir_pt3": [],
     }
+    # iterate over scenarios
     while (yield_metapool.amm_math.time_to_maturity() > 0):
         time_to_maturity = yield_metapool.amm_math.time_to_maturity()
         # filter out trades that are not to be executed at this time
@@ -221,13 +219,16 @@ def test_main():
             elif action == Action.RemoveLiquidity:
                 yield_metapool.removeLiquidityFromShare(trade["share"], swapper)
             elif action == Action.SwapPTExactIn or action == Action.SwapUnderlyingExactIn:
-                yield_metapool.swapExactIn(
+                amount_out = yield_metapool.swapExactIn(
                     _to_addr(trade["coin_in"]),
                     _to_addr(trade["coin_out"]),
                     trade["amount_in"],
                     swapper)
+                print(
+                    f"effective price: {_get_eff_price(trade['coin_in'], trade['coin_out'], trade['amount_in'], amount_out)}"
+                )
+            pprint(_get_reserves(yield_metapool))
         # update data
-        pprint(_get_reserves(yield_metapool))
         data["time_to_maturity"].append(time_to_maturity)
         data["ir_idx"].append(yield_metapool.r_idx())
         data["bal_underlying"].append(usd.balanceOf(yield_metapool.address))
@@ -306,3 +307,17 @@ def _get_reserves(yield_metapool: NapierYieldMetaCurveV2):
     bals["yield_metapool_curve_share_bal"] = curve_v2.balanceOf(
         yield_metapool.address)
     return bals
+
+
+def _get_eff_price(coin_in, coin_out, amount_in, amount_out):
+    """
+    Get effective price of a swap
+    @return: effective price in units of underlying
+    """
+    effective_price = amount_in / amount_out
+    if coin_in == "usd":
+        return effective_price
+    if coin_out == "usd":
+        return 1 / effective_price
+    else:
+        raise ValueError("effective price between pts is not supported")

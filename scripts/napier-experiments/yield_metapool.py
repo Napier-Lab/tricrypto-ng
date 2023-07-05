@@ -71,8 +71,6 @@ class YieldMetaAMM(MathAMM, LpToken):
         if amount_in < 0:
             raise Exception("Amount in must be positive")
         coin_in = self.coins[0]
-        print(f"coin_in, coin_out :>> {coin_in}, {coin_out}")
-        print(f"amount_in/1e18 :>> {amount_in/1e18}")
         # transfer coin_in=underlying to this
         self._transferFrom(coin_in, caller, self.address, amount_in)
         # swap underlying to metacoin in amms
@@ -80,35 +78,34 @@ class YieldMetaAMM(MathAMM, LpToken):
             coin_in, self.coins[1], amount_in)
         # withdraw metacoin liquidity from external pool with one coin
         # transfer coin_out to caller
-        print(f"amount_metacoin_swapped/1e18 :>> {amount_metacoin_swapped/1e18}")
         print(f"proportion [%] :>> {amount_metacoin_swapped / self.getReserve(self.coins[1])*100}")
         amount_out = self._removeExternalLiquidityOneCoin(
             coin_out, amount_metacoin_swapped, caller)
         return amount_out
 
-    def _initializeLiquidity(self, amount, caller):
+    def _initializeLiquidity(self, u_amount, caller):
         if self.totalSupply() != 0:
             raise Exception("Liquidity already initialized")
-        share = amount
-        # transfer internal coins
-        for coin in self.internal_coins:
-            self._transferFrom(
-                coin,
-                caller,
-                self.address,
-                amount)
-        # transfer 3x amount of underlying
         n = len(self.internal_coins)
-        u_amount = amount * n
+        pt_amount = int(u_amount / n)
+        share = pt_amount
+        # transfer amount of underlying
         self._transferFrom(
             self.coins[0],
             caller,
             self.address,
             u_amount)
+        # transfer internal coins
+        pt_amounts_in = [pt_amount] * n
+        for coin, pt_amount in zip(self.internal_coins, pt_amounts_in):
+            self._transferFrom(
+                coin,
+                caller,
+                self.address,
+                pt_amount)
         # add liquidity to external pool
-        amounts_in = [amount] * n
         with boa.env.prank(self.address):
-            minted = self.curve_v2.add_liquidity(amounts_in, 0)
+            minted = self.curve_v2.add_liquidity(pt_amounts_in, 0)
         print(f"expected, minted :>> {share}, {minted}")
 
         # mint LP token
@@ -260,7 +257,7 @@ class NapierYieldMetaCurveV2(YieldMetaAMM):
                 amount)
         with boa.env.prank(self.address):
             minted = self.curve_v2.add_liquidity(amounts_in, 0)
-        print(f"expecred, minted :>> {inner_share}, {minted}")
+        print(f"expected, minted :>> {inner_share}, {minted}")
         return minted
 
     def _removeExternalLiquidityFromShare(self, inner_share, caller) -> List[int]:
@@ -273,8 +270,7 @@ class NapierYieldMetaCurveV2(YieldMetaAMM):
     def _removeExternalLiquidityOneCoin(
             self, coin_withdraw, inner_share, caller) -> int:
         i = self._get_internal_coin_index(coin_withdraw)
-        expected_amount_out = self.curve_v2.calc_withdraw_one_coin(inner_share,i)
-        print(f"removeLiqOneCoin >> expectedAmountout/1e18, inner_share/1e18 :>> {expected_amount_out/1e18}, {inner_share/1e18}")
+        # expected_amount_out = self.curve_v2.calc_withdraw_one_coin(inner_share, i)
         with boa.env.prank(self.address):
             amount_out = self.curve_v2.remove_liquidity_one_coin(inner_share, i, 0, False, caller)
         return amount_out

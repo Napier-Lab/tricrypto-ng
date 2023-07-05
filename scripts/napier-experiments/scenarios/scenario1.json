@@ -1,0 +1,58 @@
+[
+  {
+    "time_to_maturity": 0.98,
+    "action": "SwapPTExactIn",
+    "coin_in": "pt1",
+    "coin_out": "usd",
+    "amount_in": 50000000000000000000
+  },
+  {
+    "time_to_maturity": 0.96,
+    "action": "SwapPTExactIn",
+    "coin_in": "pt2",
+    "coin_out": "usd",
+
+    "amount_in": 30000000000000000000
+  },
+  {
+    "time_to_maturity": 0.9,
+    "action": "SwapPTExactIn",
+    "coin_in": "pt3",
+    "coin_out": "usd",
+
+    "amount_in": 30000000000000000000
+  },
+  {
+    "time_to_maturity": 0.56,
+    "action": "SwapUnderlyingExactIn",
+    "coin_in": "usd",
+    "coin_out": "pt1",
+    "amount_in": 4000000000000000000
+  },
+  {
+    "time_to_maturity": 0.43,
+    "action": "AddLiquidity",
+    "share": 30000000000000000000
+  },
+  {
+    "time_to_maturity": 0.36,
+    "action": "SwapUnderlyingExactIn",
+    "coin_in": "usd",
+    "coin_out": "pt2",
+    "amount_in": 20000000000000000000
+  },
+  {
+    "time_to_maturity": 0.31,
+    "action": "SwapUnderlyingExactIn",
+    "coin_in": "usd",
+    "coin_out": "pt3",
+    "amount_in": 20000000000000000000
+  },
+  {
+    "time_to_maturity": 0.21,
+    "action": "SwapUnderlyingExactIn",
+    "coin_in": "usd",
+    "coin_out": "pt1",
+    "amount_in": 10000000000000000000
+  }
+]
