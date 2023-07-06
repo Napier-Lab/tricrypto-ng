@@ -45,7 +45,10 @@ class ModifiedCPSMM_Math(MathAMM):
         scaled_pt_reserve = self.getReserve(1) * self.N_INTERNAL_COINS
         if coin_in == self.coins[0]:  # coin_in is underlying
             factor = self._oneSubTimeToMaturityMulG()
-            inv_factor = 1 / factor if factor != 0 else 0
+            if factor == 0:
+                # TODO: handle this case
+                raise Exception("Factor is zero: not supported yet")
+            inv_factor = 1 / factor
             # compute new reserve out
             new_u_reserve = u_reserve + amount_in
             new_scaled_pt_reserve = int((
@@ -53,7 +56,9 @@ class ModifiedCPSMM_Math(MathAMM):
             amount_out = int((scaled_pt_reserve - new_scaled_pt_reserve) / self.N_INTERNAL_COINS)
         elif coin_in == self.coins[1]:  # coin_in is principal token
             factor = self._oneSubTimeToMaturityDivG()
-            inv_factor = 1 / factor if factor != 0 else 0
+            if factor == 0:
+                raise Exception("Factor is zero: not supported yet")
+            inv_factor = 1 / factor
             # compute new reserve out
             new_scaled_pt_reserve = scaled_pt_reserve + amount_in * self.N_INTERNAL_COINS
             new_u_reserve = int((

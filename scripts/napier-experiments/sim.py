@@ -5,6 +5,7 @@ import pandas as pd
 import boa
 from pprint import pprint
 from eth_utils import to_checksum_address
+import pytest
 from yield_metapool import NapierYieldMetaCurveV2
 
 
@@ -31,6 +32,7 @@ class Action(Enum):
 
 
 ONE_YEAR = 60 * 60 * 24 * 365
+# reserve states when pool starts; UNDERLYING:PT1:PT2:PT3 = 3:1:1:1
 INITIAL_UNDERLYING_LIQUIDITY = 1000 * 10**18
 # https://curve.fi/#/ethereum/pools/factory-crypto-91/deposit
 INITIAL_PRICES = [10**18, 10**18, 10**18]  # 1:1:1
@@ -165,12 +167,17 @@ def _setup_pool():
     return swap, yield_metapool, usd, coins, views, swapper
 
 
-def test_main():
+@pytest.fixture
+def setup_pool():
+    yield _setup_pool()
+
+
+def test_scenario(setup_pool):
     # load scenario
     with open("scripts/napier-experiments/scenarios/scenario2.json", "r") as file:
         scenarios = json.load(file)
     # set up pool
-    swap, yield_metapool, usd, coins, views, swapper = _setup_pool()
+    swap, yield_metapool, usd, coins, views, swapper = setup_pool
     bals = _get_reserves(yield_metapool)
     print('Initial Balances:')
     pprint(bals)
@@ -246,6 +253,50 @@ def test_main():
     data.to_csv("data/marginal_ir.csv", index=False)
 
 
+def test_efficiency(setup_pool):
+    # set up pool
+    time_to_maturity = 0.9999
+    market_ir = 0.04
+    desired_ir = 0.05
+
+    # if time_to_maturity is 1, swap will fail (not sure this is legit)
+    boa.env.time_travel(int((1 - time_to_maturity) * ONE_YEAR))
+    swap, yield_metapool, usd, coins, views, swapper = setup_pool
+
+    # push up the interest rate up to the market interest rate
+    amount_in = 1 * 10**18
+    while (True):
+        amount_out = yield_metapool.swapExactIn(coins[0].address, usd.address, amount_in, swapper)
+        ir = _get_marginal_interest_rate(yield_metapool, 0)
+        print(f"ir: {ir}")
+        print(f"effective price: {_get_eff_price('pt1', 'usd', amount_in, amount_out)}")
+        if ir > market_ir:
+            market_ir = ir
+            break
+    print("market state:")
+    pprint(_get_reserves(yield_metapool))
+
+    # push up the interest rate up to the desired interest rate
+    amount_swap = 0
+    while (True):
+        amount_swap += amount_in
+        yield_metapool.swapExactIn(coins[0].address, usd.address, amount_in, swapper)
+        ir = _get_marginal_interest_rate(yield_metapool, 0)
+        print(f"ir: {ir}")
+        if ir > desired_ir:
+            desired_ir = ir
+            break
+
+    print("Result:\n",
+          "coin_in: pt1\n",
+          "coin_out: usd\n",
+          f"market_ir [%]: {market_ir*100}\n",
+          f"desired_ir [%]: {desired_ir*100}\n",
+          f"amount_swap [pt1]: {amount_swap/1e18}"
+          )
+    pprint(_get_reserves(yield_metapool))
+
+
 def _get_marginal_interest_rate(yield_metapool: NapierYieldMetaCurveV2, internal_coin_index):
     n = len(yield_metapool.internal_coins)
     # dived by 1e18. assume all coins have 18 decimals
@@ -275,6 +326,7 @@ def _calculate_marginal_ir_of_index(i, n, D, A, K0, gamma, zs, s_idx, r_idx, tim
     denominator = (denominator_1th_term + denominator_2nd_term) * (3 * s_idx)
     # XXX: i'm not sure if this is correct
     if denominator == 0:
+        print("something is wrong. denominator is 0")
         return 0
     ri = (numerator / denominator)**(1 / time_to_mat) * (1 + r_idx) - 1
     return ri
