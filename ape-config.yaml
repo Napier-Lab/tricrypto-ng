@@ -3,13 +3,13 @@ contracts_folder: contracts/main/
 
 plugins:
   - name: vyper
-  - name: alchemy
-  - name: hardhat
-  - name: ledger
-  - name: etherscan
-  - name: arbitrum
-  - name: optimism
-  - name: polygon
+  # - name: alchemy
+  # - name: hardhat
+  # - name: ledger
+  # - name: etherscan
+  # - name: arbitrum
+  # - name: optimism
+  # - name: polygon
 
 default_ecosystem: ethereum
 
@@ -28,23 +28,23 @@ hardhat:
       mainnet:
         upstream_provider: geth
 
-ethereum:
-  default_network: mainnet-fork
-  mainnet_fork:
-    transaction_acceptance_timeout: 99999999
-    default_provider: hardhat
-  mainnet:
-    transaction_acceptance_timeout: 99999999
-  sepolia:
-    transaction_acceptance_timeout: 99999999
+# ethereum:
+#   default_network: mainnet-fork
+#   mainnet_fork:
+#     transaction_acceptance_timeout: 99999999
+#     default_provider: hardhat
+#   mainnet:
+#     transaction_acceptance_timeout: 99999999
+#   sepolia:
+#     transaction_acceptance_timeout: 99999999
 
-arbitrum:
-  default_network: mainnet-fork
-  mainnet_fork:
-    transaction_acceptance_timeout: 99999999
-    default_provider: hardhat
-  mainnet:
-    transaction_acceptance_timeout: 99999999
+# arbitrum:
+#   default_network: mainnet-fork
+#   mainnet_fork:
+#     transaction_acceptance_timeout: 99999999
+#     default_provider: hardhat
+#   mainnet:
+#     transaction_acceptance_timeout: 99999999
 
 geth:
   ethereum:

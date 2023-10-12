@@ -52,5 +52,19 @@
     "coin_in": "usd",
     "coin_out": "pt3",
     "amount_in": 10000000000000000000
+  },
+  {
+    "time_to_maturity": 0.11,
+    "action": "SwapUnderlyingExactIn",
+    "coin_in": "usd",
+    "coin_out": "pt1",
+    "amount_in": 4000000000000000000
+  },
+  {
+    "time_to_maturity": 0.07,
+    "action": "SwapPTExactIn",
+    "coin_in": "usd",
+    "coin_out": "pt1",
+    "amount_in": 4000000000000000000
   }
 ]

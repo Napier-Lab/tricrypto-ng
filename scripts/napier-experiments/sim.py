@@ -49,10 +49,13 @@ PARAMS = {
     "initial_prices": INITIAL_PRICES[1:],
     # modified
     # TODO: check this
-    "A": int(2.5 * 135 * 3**3 * 10000),  # MAX = 1000 * 3**3 * 10000
-    "gamma": int(80e-5 * 1e18),
-    "mid_fee": int(4e-3 * 1e10),
-    "out_fee": int(4e-2 * 1e10),
+    # "A": int(2.5 * 135 * 3**3 * 10000),  # MAX = 1000 * 3**3 * 10000
+    "A": int(27000000),  # MAX = 1000 * 3**3 * 10000
+    "gamma": int(0.02 * 1e18),
+    # "mid_fee": int(4e-3 * 1e10),
+    "mid_fee": int(3000000),
+    # "out_fee": int(4e-2 * 1e10),
+    "out_fee": int(22000000),
     "allowed_extra_profit": int(0.00000001 * 1e18),
     "fee_gamma": int(0.2 * 1e18),
     # "adjustment_step": int(0.000015 * 1e18),
@@ -108,8 +111,8 @@ def _setup_pool():
             0,  # <-------- 0th implementation index
             PARAMS["A"],
             PARAMS["gamma"],
-            0,
-            0,
+            PARAMS["mid_fee"],
+            PARAMS["out_fee"],
             PARAMS["fee_gamma"],
             PARAMS["allowed_extra_profit"],
             PARAMS["adjustment_step"],
@@ -145,12 +148,12 @@ def _setup_pool():
     # we need to disable loss calculation since there is no fee involved
     # and swaps will not result in vprice going up. to do this, ramp
     # up but do not actually ramp.
-    with boa.env.prank(deployer):
-        swap.ramp_A_gamma(
-            swap.A(),
-            swap.gamma(),
-            boa.env.vm.state.timestamp + ONE_YEAR,
-        )
+    # with boa.env.prank(deployer):
+    #     swap.ramp_A_gamma(
+    #         swap.A(),
+    #         swap.gamma(),
+    #         boa.env.vm.state.timestamp + ONE_YEAR,
+    #     )
 
     swapper = boa.env.generate_address()
     quantities = [10**8 * 10**18, 10**8 * 10**18, 10**8 * 10**18, 10**8 * 10**18]
@@ -253,48 +256,48 @@ def test_scenario(setup_pool):
     data.to_csv("data/marginal_ir.csv", index=False)
 
 
-def test_efficiency(setup_pool):
-    # set up pool
-    time_to_maturity = 0.9999
-    market_ir = 0.04
-    desired_ir = 0.05
+# def test_efficiency(setup_pool):
+#     # set up pool
+#     time_to_maturity = 0.9999
+#     market_ir = 0.04
+#     desired_ir = 0.05
 
-    # if time_to_maturity is 1, swap will fail (not sure this is legit)
-    boa.env.time_travel(int((1 - time_to_maturity) * ONE_YEAR))
-    swap, yield_metapool, usd, coins, views, swapper = setup_pool
+#     # if time_to_maturity is 1, swap will fail (not sure this is legit)
+#     boa.env.time_travel(int((1 - time_to_maturity) * ONE_YEAR))
+#     swap, yield_metapool, usd, coins, views, swapper = setup_pool
 
-    # push up the interest rate up to the market interest rate
-    amount_in = 1 * 10**18
-    while (True):
-        amount_out = yield_metapool.swapExactIn(coins[0].address, usd.address, amount_in, swapper)
-        ir = _get_marginal_interest_rate(yield_metapool, 0)
-        print(f"ir: {ir}")
-        print(f"effective price: {_get_eff_price('pt1', 'usd', amount_in, amount_out)}")
-        if ir > market_ir:
-            market_ir = ir
-            break
-    print("market state:")
-    pprint(_get_reserves(yield_metapool))
+#     # push up the interest rate up to the market interest rate
+#     amount_in = 1 * 10**18
+#     while (True):
+#         amount_out = yield_metapool.swapExactIn(coins[0].address, usd.address, amount_in, swapper)
+#         ir = _get_marginal_interest_rate(yield_metapool, 0)
+#         print(f"ir: {ir}")
+#         print(f"effective price: {_get_eff_price('pt1', 'usd', amount_in, amount_out)}")
+#         if ir > market_ir:
+#             market_ir = ir
+#             break
+#     print("market state:")
+#     pprint(_get_reserves(yield_metapool))
 
-    # push up the interest rate up to the desired interest rate
-    amount_swap = 0
-    while (True):
-        amount_swap += amount_in
-        yield_metapool.swapExactIn(coins[0].address, usd.address, amount_in, swapper)
-        ir = _get_marginal_interest_rate(yield_metapool, 0)
-        print(f"ir: {ir}")
-        if ir > desired_ir:
-            desired_ir = ir
-            break
+#     # push up the interest rate up to the desired interest rate
+#     amount_swap = 0
+#     while (True):
+#         amount_swap += amount_in
+#         yield_metapool.swapExactIn(coins[0].address, usd.address, amount_in, swapper)
+#         ir = _get_marginal_interest_rate(yield_metapool, 0)
+#         print(f"ir: {ir}")
+#         if ir > desired_ir:
+#             desired_ir = ir
+#             break
 
-    print("Result:\n",
-          "coin_in: pt1\n",
-          "coin_out: usd\n",
-          f"market_ir [%]: {market_ir*100}\n",
-          f"desired_ir [%]: {desired_ir*100}\n",
-          f"amount_swap [pt1]: {amount_swap/1e18}"
-          )
-    pprint(_get_reserves(yield_metapool))
+#     print("Result:\n",
+#           "coin_in: pt1\n",
+#           "coin_out: usd\n",
+#           f"market_ir [%]: {market_ir*100}\n",
+#           f"desired_ir [%]: {desired_ir*100}\n",
+#           f"amount_swap [pt1]: {amount_swap/1e18}"
+#           )
+#     pprint(_get_reserves(yield_metapool))
 
 
 def _get_marginal_interest_rate(yield_metapool: NapierYieldMetaCurveV2, internal_coin_index):

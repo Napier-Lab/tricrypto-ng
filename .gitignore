@@ -142,7 +142,6 @@ reports/
 *.csv
 
 # misc
-/data
 todo.txt
 node_modules
 *.json
